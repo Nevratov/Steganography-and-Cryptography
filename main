@@ -1,0 +1,168 @@
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
+import kotlin.experimental.xor
+import kotlin.system.exitProcess
+
+fun main() {
+    operation()
+}
+
+fun operation() {
+    println("Task (hide, show, exit):")
+
+    when (readln()) {
+        "hide" -> checkFile()
+        "show" -> show()
+        "exit" -> {
+            println("Bye!")
+            exitProcess(0)
+        }
+    }
+}
+
+fun checkFile() {
+    println("Input image file:")
+    val inputImage = readln()
+
+    println("Output image file:")
+    val outputImage = readln()
+
+    val inputFile = File(inputImage)
+
+    if (!inputFile.exists()) {
+        println("Can't read input file!")
+        operation()
+    } else {
+        //println("Input Image: $inputImage\nOutput Image: $outputImage")
+        hide(inputFile, outputImage)
+    }
+}
+
+fun toBitString(image: BufferedImage): String {
+    println("Message to hide:")
+    val secretMessage = readln()
+    val secretMessageByteArray = secretMessage.toByteArray()
+
+    println("Password:")
+    val passwordString = readln()
+    val passwordByteArray = passwordString.toByteArray()
+
+    var messageWithPassword = byteArrayOf()
+    var counterIndex = 0
+    while (counterIndex != secretMessageByteArray.size) {
+        for (i in passwordByteArray.indices) {
+            if (counterIndex == secretMessageByteArray.size) break
+            messageWithPassword += secretMessageByteArray[counterIndex] xor passwordByteArray[i]
+            counterIndex++
+        }
+    }
+    messageWithPassword += byteArrayOf(0, 0, 3)
+
+
+
+    var bitString = ""
+    for (byte in messageWithPassword) {
+        val biteString = String.format("%8s", Integer.toBinaryString(byte.toInt() and 0xFF)).replace(' ', '0')
+        bitString += biteString
+    }
+
+    if (image.width * image.height < bitString.length) {
+        println("The input image is not large enough to hold this message.")
+        operation()
+    }
+    return bitString
+}
+
+fun hide(inputFile: File, outputImage: String) {
+    val myImage = ImageIO.read(inputFile)
+
+    val bitString = toBitString(myImage)
+
+    var counterBit = 0
+    mainLoop@for (y in 0 until myImage.height) {
+        for (x in 0 until myImage.width) {
+            val color = Color(myImage.getRGB(x, y))
+
+            if (counterBit == bitString.lastIndex + 1) {
+                break@mainLoop
+            }
+
+            val r = color.red
+            val g = color.green
+            val b = color.blue shr 1 shl 1 or bitString[counterBit].toString().toInt()
+            counterBit++
+
+            val newColor = Color(r, g, b)
+            myImage.setRGB(x,y, newColor.rgb)
+        }
+    }
+
+    val outputFile = File(outputImage)
+    ImageIO.write(myImage, "png", outputFile)
+    println("Message saved in $outputImage image")
+    operation()
+}
+
+fun show() {
+    println("Input image file:")
+    val inputImage = readln()
+
+    println("Password:")
+    val passString = readln()
+    val passByteArray = passString.toByteArray()
+
+    val inputFile = File(inputImage)
+    val myImage = ImageIO.read(inputFile)
+
+    val allBlueByteImage = mutableListOf<UByte>()
+    for (y in 0 until myImage.height) {
+        for (x in 0 until myImage.width) {
+            val color = Color(myImage.getRGB(x,y))
+            allBlueByteImage += (color.blue).toUByte()
+        }
+    }
+
+
+    var messageStr = ""
+    for (i in 0 ..allBlueByteImage.lastIndex) {
+        if (allBlueByteImage[i].toInt() and 254.inv() == 0   && allBlueByteImage[i+1].toInt() and 254.inv() == 0 && allBlueByteImage[i+2].toInt() and 254.inv() == 0   && allBlueByteImage[i+3].toInt() and 254.inv() == 0 &&
+            allBlueByteImage[i+4].toInt() and 254.inv() == 0   && allBlueByteImage[i+5].toInt() and 254.inv() == 0 && allBlueByteImage[i+6].toInt() and 254.inv() == 0   && allBlueByteImage[i+7].toInt() and 254.inv() == 0 &&
+            allBlueByteImage[i+8].toInt() and 254.inv() == 0   && allBlueByteImage[i+9].toInt() and 254.inv() == 0 && allBlueByteImage[i+10].toInt() and 254.inv() == 0   && allBlueByteImage[i+11].toInt() and 254.inv() == 0 &&
+            allBlueByteImage[i+12].toInt() and 254.inv() == 0   && allBlueByteImage[i+13].toInt() and 254.inv() == 0 && allBlueByteImage[i+14].toInt() and 254.inv() == 0   && allBlueByteImage[i+15].toInt() and 254.inv() == 0 &&
+            allBlueByteImage[i+16].toInt() and 254.inv() == 0   && allBlueByteImage[i+17].toInt() and 254.inv() == 0 && allBlueByteImage[i+18].toInt() and 254.inv() == 0   && allBlueByteImage[i+19].toInt() and 254.inv() == 0 &&
+            allBlueByteImage[i+20].toInt() and 254.inv() == 0   && allBlueByteImage[i+21].toInt() and 254.inv() == 0 && allBlueByteImage[i+22].toInt() and 254.inv() == 1   && allBlueByteImage[i+23].toInt() and 254.inv() == 1) {
+            break
+        } else {
+            val mesByte = allBlueByteImage[i].toInt() and 254.inv()
+            messageStr += mesByte.toString()
+        }
+    }
+
+    var result = byteArrayOf()
+    var countCh = messageStr.length / 8
+    var fCh = 0
+    var lCh = 8
+    while (countCh != 0) {
+        val pp = messageStr.substring(fCh,lCh)
+        result += pp.toByte(2)
+        countCh--
+        fCh += 8
+        lCh += 8
+    }
+
+    var finalResult = byteArrayOf()
+    var countIndex = 0
+    while (countIndex != result.size) {
+        for (i in passByteArray.indices) {
+            if (countIndex == result.size) break
+            finalResult += result[countIndex] xor passByteArray[i]
+            countIndex++
+        }
+    }
+
+    println("Message:\n${finalResult.toString(Charsets.UTF_8)}")
+
+    operation()
+}
